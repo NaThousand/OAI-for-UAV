@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "calibration_scope.h": "c",
+        "defs_nr_ue.h": "c",
+        "nr_ul_estimation.h": "c",
+        "defs_gnb.h": "c"
+    }
+}
