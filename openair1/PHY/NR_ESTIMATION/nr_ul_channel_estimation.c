@@ -65,6 +65,54 @@ __attribute__((always_inline)) inline c16_t c32x16cumulVectVectWithSteps(c16_t *
   return c16x32div(cumul, N);
 }
 
+
+//提取并且将相位偏移信息保存在文件中
+void extract_and_phase(c16_t **ul_ch_estimates,int nb_antennas_rx,int symbol_size,int nl){
+  FILE *file = fopen("phase_information_db.csv", "w");
+  if (file == NULL) {
+      printf("Error opening file for writing phase information\n");
+      return;
+  }
+
+  for (int aarx = 0; aarx < nb_antennas_rx; aarx++) {
+      c16_t *ul_ch = ul_ch_estimates[nl * nb_antennas_rx + aarx];
+      for (int i = 0; i < symbol_size; i++) {
+          double phase = atan2(ul_ch[i].i, ul_ch[i].r);
+          fprintf(file, "%.6f\n", phase);
+      }
+      fprintf(file, "\n");
+  }
+
+  fclose(file);
+}
+
+//提取pilot数组内容并且储存到文件中
+void export_pilot_values(c16_t *pilot, int pilot_size) {
+    static int file_count = 0; // 用于计数生成的文件数量
+    char filename[100];
+
+    // 限制文件数量为50
+    if (file_count >= 50) {
+        return;
+    }
+
+    snprintf(filename, sizeof(filename), "pilot_values_%d.txt", file_count);
+    FILE *file = fopen(filename, "w");
+    if (file == NULL) {
+        printf("Error opening file!\n");
+        return;
+    }
+
+    for (int i = 0; i < pilot_size; i++) {
+        // 计算平方范数
+        double norm_squared = (pilot[i].r * pilot[i].r) + (pilot[i].i * pilot[i].i);
+        fprintf(file, "%.6f\n", norm_squared);
+    }
+
+    fclose(file);
+    file_count++; // 计数增加
+}
+
 int nr_pusch_channel_estimation(PHY_VARS_gNB *gNB,
                                 unsigned char Ns,
                                 int nl,
@@ -119,6 +167,8 @@ int nr_pusch_channel_estimation(PHY_VARS_gNB *gNB,
                      nb_rb_pusch,
                      (pusch_pdu->bwp_start + pusch_pdu->rb_start) * NR_NB_SC_PER_RB,
                      pusch_pdu->dmrs_config_type);
+    // 导出pilot数组内容
+    export_pilot_values(pilot, 3280);
   } else { // if transform precoding or SC-FDMA is enabled in Uplink
     // NR_SC_FDMA supports type1 DMRS so only 6 DMRS REs per RB possible
     const int index = get_index_for_dmrs_lowpapr_seq(nb_rb_pusch * (NR_NB_SC_PER_RB / 2));
@@ -468,6 +518,9 @@ int nr_pusch_channel_estimation(PHY_VARS_gNB *gNB,
     *nvar = (uint32_t)(noise_amp2 / nest_count);
   }
 
+
+  //提取相位信息并储存到文件中，用于后一步分析使用
+  extract_and_store_phase_information(ul_ch_estimates, gNB->frame_parms.nb_antennas_rx, symbolSize, nl);
   return 0;
 }
 
