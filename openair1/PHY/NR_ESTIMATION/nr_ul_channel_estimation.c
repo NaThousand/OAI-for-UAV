@@ -65,8 +65,7 @@ __attribute__((always_inline)) inline c16_t c32x16cumulVectVectWithSteps(c16_t *
   return c16x32div(cumul, N);
 }
 
-
-// 提取并且将原数组和相位偏移信息保存在文件中
+// 提取并且将原数组和相位偏移信息保存在txt文件中
 void extract_and_phase(c16_t **ul_ch_estimates, int nb_antennas_rx, int symbol_size, int nl) {
     FILE *file2 = fopen("phase_information_db.txt", "w");
     FILE *file1 = fopen("ul_ch_estimates.txt", "w");
