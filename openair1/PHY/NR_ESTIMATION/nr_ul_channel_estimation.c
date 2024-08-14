@@ -66,32 +66,40 @@ __attribute__((always_inline)) inline c16_t c32x16cumulVectVectWithSteps(c16_t *
 }
 
 
-//提取并且将相位偏移信息保存在文件中
-void extract_and_phase(c16_t **ul_ch_estimates,int nb_antennas_rx,int symbol_size,int nl){
-  FILE *file = fopen("phase_information_db.csv", "w");
-  if (file == NULL) {
-      printf("Error opening file for writing phase information\n");
-      return;
-  }
+// 提取并且将原数组和相位偏移信息保存在文件中
+void extract_and_phase(c16_t **ul_ch_estimates, int nb_antennas_rx, int symbol_size, int nl) {
+    FILE *file2 = fopen("phase_information_db.txt", "w");
+    FILE *file1 = fopen("ul_ch_estimates.txt", "w");
+    if (file1 == NULL) {
+        LOG_E(PHY, "Error opening file for writing ul_ch_estimates information\n");
+        return;
+    }
+    if (file2 == NULL) {
+        LOG_E(PHY, "Error opening file for writing phase information\n");
+        return;
+    }
 
-  for (int aarx = 0; aarx < nb_antennas_rx; aarx++) {
-      c16_t *ul_ch = ul_ch_estimates[nl * nb_antennas_rx + aarx];
-      for (int i = 0; i < symbol_size; i++) {
-          double phase = atan2(ul_ch[i].i, ul_ch[i].r);
-          fprintf(file, "%.6f\n", phase);
-      }
-      fprintf(file, "\n");
-  }
+    for (int aarx = 0; aarx < nb_antennas_rx; aarx++) {
+        fprintf(file1, "%.6f\n", ul_ch_estimates[aarx]);
+        c16_t *ul_ch = ul_ch_estimates[nl * nb_antennas_rx + aarx];
+        for (int i = 0; i < symbol_size; i++) {
+            double phase = atan2(ul_ch[i].i, ul_ch[i].r);
+            fprintf(file2, "%.6f\n", phase);
+        }
+        fprintf(file1, "\n");
+        fprintf(file2, "\n");
+    }
 
-  fclose(file);
+    fclose(file1);
+    fclose(file2);
 }
 
-//提取pilot数组内容并且储存到文件中
+// 提取 pilot 数组内容并且储存到文件中
 void export_pilot_values(c16_t *pilot, int pilot_size) {
     static int file_count = 0; // 用于计数生成的文件数量
     char filename[100];
 
-    // 限制文件数量为50
+    // 限制文件数量为 50
     if (file_count >= 50) {
         return;
     }
@@ -99,7 +107,7 @@ void export_pilot_values(c16_t *pilot, int pilot_size) {
     snprintf(filename, sizeof(filename), "pilot_values_%d.txt", file_count);
     FILE *file = fopen(filename, "w");
     if (file == NULL) {
-        printf("Error opening file!\n");
+        LOG_E(PHY, "Error opening file for writing pilot values\n");
         return;
     }
 
@@ -112,6 +120,7 @@ void export_pilot_values(c16_t *pilot, int pilot_size) {
     fclose(file);
     file_count++; // 计数增加
 }
+
 
 int nr_pusch_channel_estimation(PHY_VARS_gNB *gNB,
                                 unsigned char Ns,
@@ -520,7 +529,7 @@ int nr_pusch_channel_estimation(PHY_VARS_gNB *gNB,
 
 
   //提取相位信息并储存到文件中，用于后一步分析使用
-  extract_and_store_phase_information(ul_ch_estimates, gNB->frame_parms.nb_antennas_rx, symbolSize, nl);
+  extract_and_phase(ul_ch_estimates, gNB->frame_parms.nb_antennas_rx, symbolSize, nl);
   return 0;
 }
 
