@@ -1,3 +1,9 @@
+This project is designed for UAVs to connect to OAI.
+In order to meet the national policy of vigorously supporting the development of "low-altitude economy" and to integrate hot technologies such as drones and 5G to escort the development of low-altitude economy, this project intends to design a general certification mechanism suitable for 5G heterogeneous networks, and build a three-dimensional network certification platform based on drones and this mechanism to achieve terminal access in three-dimensional space.
+
+
+
+
 <h1 align="center">
     <a href="https://openairinterface.org/"><img src="https://openairinterface.org/wp-content/uploads/2015/06/cropped-oai_final_logo.png" alt="OAI" width="550"></a>
 </h1>
