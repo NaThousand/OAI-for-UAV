@@ -1,3 +1,14 @@
+物理层目编译命令：
+cd cmake_targets
+./build_oai --phy_simulators
+相关命令文档：https://gitlab.eurecom.fr/oai/openairinterface5g/-/blob/develop/doc/BUILD.md
+
+
+
+
+
+
+
 <h1 align="center">
     <a href="https://openairinterface.org/"><img src="https://openairinterface.org/wp-content/uploads/2015/06/cropped-oai_final_logo.png" alt="OAI" width="550"></a>
 </h1>
