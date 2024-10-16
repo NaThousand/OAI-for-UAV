@@ -71,16 +71,47 @@ static void allocAddrCopy(BIT_STRING_t *out, transport_layer_addr_t in)
   }
 }
 
-bool validate_ue_with_xgboost(c16_t **ul_ch_estimates, int num_symbols){
+bool validate_ue_with_xgboost_from_file() {
+    // 读取文件中的信道估计
+    FILE *file_estimates = fopen(FILENAME_ESTIMATES, "r");
+    if (!file_estimates) {
+        // printf("Error opening file for reading %s.\n", FILENAME_ESTIMATES);
+        return false;
+    }
+
+    // 假设有固定的天线和符号数量
+    const int nb_antennas_rx = 1; // 示例：1根天线
+    const int symbol_size = 10; // 示例：10个符号
+    c16_t **ul_ch_estimates = (c16_t **)malloc(nb_antennas_rx * sizeof(c16_t *));
+    for (int i = 0; i < nb_antennas_rx; i++) {
+        ul_ch_estimates[i] = (c16_t *)malloc(symbol_size * sizeof(c16_t));
+    }
+
+    // 读取数据到数组
+    for (int aarx = 0; aarx < nb_antennas_rx; aarx++) {
+        for (int i = 0; i < symbol_size; i++) {
+            int real_part, imag_part;
+            if (fscanf(file_estimates, "%d, %d\n", &real_part, &imag_part) != 2) {
+                printf("Error reading data from file.\n");
+                fclose(file_estimates);
+                return false;
+            }
+            ul_ch_estimates[aarx][i].r = (int16_t)real_part;
+            ul_ch_estimates[aarx][i].i = (int16_t)imag_part;
+        }
+        // 跳过换行
+        fscanf(file_estimates, "\n");
+    }
+    fclose(file_estimates);
 
   // 创建XGBoost输入矩阵
   DMatrixHandle dmatrix;
-  XGDMatrixCreateFromMat(ul_ch_estimates, 1, num_symbols, NAN, &dmatrix);
+    XGDMatrixCreateFromMat((float **)ul_ch_estimates, nb_antennas_rx, symbol_size, NAN, &dmatrix);
 
   // 加载训练好的模型
   BoosterHandle booster;
   XGBoosterCreate(NULL, 0, &booster);
-  XGBoosterLoadModel(booster, "/home/devcontainers/OAI-for-UAV/openairinterface5g/xgb_model.bin"); //路径需要根据实际情况修改
+    XGBoosterLoadModel(booster, "/home/devcontainers/OAI-for-UAV/openairinterface5g/xgb_model.bin");
 
   // 进行推理
   bst_ulong out_len;
