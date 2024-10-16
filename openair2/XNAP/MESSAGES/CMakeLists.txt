@@ -1,3 +1,4 @@
+# include(${CMAKE_SOURCE_DIR}/cmake_targets/macros.cmake)
 set(XNAP_VERSION 16 2 0)
 make_version(XNAP_cc ${XNAP_VERSION})
 #add_definitions(-DXNAP_VERSION=${XNAP_cc})

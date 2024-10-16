@@ -1,3 +1,4 @@
+# include(/home/devcontainers/OAI-for-UAV/openairinterface5g/cmake_targets/macros.cmake)
 #set(NRPPA_VERSION 16 78 0)
 #make_version(NRPPA_cc ${NRPPA_VERSION})
 #add_definitions(-DNRPPA_VERSION=${NRPPA_cc})

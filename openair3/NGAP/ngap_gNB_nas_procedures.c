@@ -49,6 +49,9 @@
 #include "ngap_gNB_nas_procedures.h"
 #include "ngap_gNB_management_procedures.h"
 
+#include <xgboost/c_api.h>
+#include <math.h>
+
 static void allocCopy(OCTET_STRING_t *out, ngap_pdu_t in)
 {
   if (in.length) {
@@ -66,6 +69,33 @@ static void allocAddrCopy(BIT_STRING_t *out, transport_layer_addr_t in)
     out->size = in.length;
     out->bits_unused = 0;
   }
+}
+
+bool validate_ue_with_xgboost(c16_t **ul_ch_estimates, int num_symbols){
+
+  // 创建XGBoost输入矩阵
+  DMatrixHandle dmatrix;
+  XGDMatrixCreateFromMat(ul_ch_estimates, 1, num_symbols, NAN, &dmatrix);
+
+  // 加载训练好的模型
+  BoosterHandle booster;
+  XGBoosterCreate(NULL, 0, &booster);
+  XGBoosterLoadModel(booster, "/home/devcontainers/OAI-for-UAV/openairinterface5g/xgb_model.bin"); //路径需要根据实际情况修改
+
+  // 进行推理
+  bst_ulong out_len;
+  const float *out_result;
+  XGBoosterPredict(booster, dmatrix, 0, 0, 0, &out_len, &out_result);
+
+  // 返回推理结果（假设输出结果大于0.5表示合法）
+  bool is_valid = out_result[0] > 0.5;
+
+  // 释放资源
+  XGDMatrixFree(dmatrix);
+  XGBoosterFree(booster);
+
+  return is_valid;
+
 }
 
 //------------------------------------------------------------------------------
@@ -154,6 +184,13 @@ int ngap_gNB_handle_nas_first_req(instance_t instance, ngap_nas_first_req_t *UEf
 
     if (amf_desc_p) {
       NGAP_INFO("[gNB %ld] Chose AMF '%s' (assoc_id %d) through highest relative capacity\n", instance, amf_desc_p->amf_name, amf_desc_p->assoc_id);
+    }
+  }
+
+  if (amf_desc_p != NULL) {
+    if (!validate_ue_with_xgboost(ul_ch_estimates, num_symbols)) {
+        NGAP_WARN("Physical layer key validation failed for UE, rejecting connection request.\n");
+        return -1;  // 密钥验证失败，拒绝UE连接
     }
   }
 

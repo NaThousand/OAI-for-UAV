@@ -1,0 +1,5 @@
+/home/devcontainers/OAI-for-UAV/openairinterface5g/openair3/NGAP/build_ngap/CMakeFiles/edit_cache.dir
+/home/devcontainers/OAI-for-UAV/openairinterface5g/openair3/NGAP/build_ngap/CMakeFiles/rebuild_cache.dir
+/home/devcontainers/OAI-for-UAV/openairinterface5g/openair3/NGAP/build_ngap/MESSAGES/CMakeFiles/asn1_ngap.dir
+/home/devcontainers/OAI-for-UAV/openairinterface5g/openair3/NGAP/build_ngap/MESSAGES/CMakeFiles/edit_cache.dir
+/home/devcontainers/OAI-for-UAV/openairinterface5g/openair3/NGAP/build_ngap/MESSAGES/CMakeFiles/rebuild_cache.dir

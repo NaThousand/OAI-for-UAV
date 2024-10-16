@@ -64,61 +64,75 @@ __attribute__((always_inline)) inline c16_t c32x16cumulVectVectWithSteps(c16_t *
   return c16x32div(cumul, N);
 }
 
-//提取并且将原数组和相位偏移信息保存在txt文件中
-void extract_and_phase(c16_t **ul_ch_estimates, int nb_antennas_rx, int symbol_size, int nl) {
-    FILE *file2 = fopen("phase_information_db.txt", "w");
-    FILE *file1 = fopen("ul_ch_estimates.txt", "w");
-    if (file1 == NULL) {
-        LOG_E(PHY, "Error opening file for writing ul_ch_estimates information\n");
-        return;
-    }
-    if (file2 == NULL) {
-        LOG_E(PHY, "Error opening file for writing phase information\n");
+// 提取相位偏差信息和原始数组并保存到文件中
+void extract_and_save_phase_offset(c16_t **ul_ch_estimates, int nb_antennas_rx, int symbol_size) {
+
+    static int call_count = 0;
+    const int max_calls = 500; // 最大调用次数
+
+      // 如果调用次数达到上限，停止执行
+    if (call_count >= max_calls) {
+        // LOG_E(PHY, "The number of generated files has reached the upper limit\n");
         return;
     }
 
+    // 增加调用计数器
+    call_count++;
+
+    // 创建文件名，使用调用次数作为唯一标识
+    char filename_estimates[100];
+    char filename_phase[100];
+
+    snprintf(filename_estimates, sizeof(filename_estimates), "ul_ch_estimates_%d.txt", call_count);
+    snprintf(filename_phase, sizeof(filename_phase), "phase_information_%d.txt", call_count);
+
+    // 打开保存原始数组的文件
+    FILE *file_estimates = fopen(filename_estimates, "w");
+    if (file_estimates == NULL) {
+        // LOG_E(PHY, "Error opening file for writing ul_ch_estimates information.\n");
+        return;
+    }
+
+    // 打开保存相位偏差信息的文件
+    FILE *file_phase = fopen(filename_phase, "w");
+    if (file_phase == NULL) {
+        // LOG_E(PHY, "Error opening file for writing phase information.\n");
+        fclose(file_estimates);  // 关闭之前打开的文件
+        return;
+    }
+
+    // 遍历每根接收天线
     for (int aarx = 0; aarx < nb_antennas_rx; aarx++) {
-        // fprintf(file1, "%.6f\n", ul_ch_estimates[aarx]);
-        c16_t *ul_ch = ul_ch_estimates[nl * nb_antennas_rx + aarx];
+        // 获取当前天线的信道估计数组
+        c16_t *ul_ch = ul_ch_estimates[aarx];
+
+        // 遍历符号中的每个子载波
         for (int i = 0; i < symbol_size; i++) {
-          fprintf(file1, "Real: %d, Imaginary: %d\n", ul_ch[i].r, ul_ch[i].i);
-          double phase = atan2(ul_ch[i].i, ul_ch[i].r);
-          fprintf(file2, "%.6f\n", phase);
+            // 获取实部和虚部
+            int16_t real_part = ul_ch[i].r;
+            int16_t imag_part = ul_ch[i].i;
+
+            // 计算相位偏差
+            double phase = atan2((double)imag_part, (double)real_part);
+
+            // 将原始实部和虚部写入文件
+            fprintf(file_estimates, "Real: %d, Imaginary: %d\n", real_part, imag_part);
+
+            // 将相位偏差信息写入文件
+            fprintf(file_phase, "%.6f\n", phase);
         }
-        fprintf(file1, "\n");
-        fprintf(file2, "\n");
+
+        // 每个天线结束后换行
+        fprintf(file_estimates, "\n");
+        fprintf(file_phase, "\n");
     }
 
-    fclose(file1);
-    fclose(file2);
-}
+    // 关闭文件
+    fclose(file_estimates);
+    fclose(file_phase);
 
-// 提取 pilot 数组内容并且储存到文件中
-void export_pilot_values(c16_t *pilot, int pilot_size) {
-    static int file_count = 0; // 用于计数生成的文件数量
-    char filename[100];
-
-    // 限制文件数量为 50
-    if (file_count >= 50) {
-        return;
-    }
-
-    snprintf(filename, sizeof(filename), "pilot_values_%d.txt", file_count);
-    FILE *file = fopen(filename, "w");
-    if (file == NULL) {
-        LOG_E(PHY, "Error opening file for writing pilot values\n");
-        return;
-    }
-
-    for (int i = 0; i < pilot_size; i++) {
-        // 计算平方范数
-        double norm_squared = (pilot[i].r * pilot[i].r) + (pilot[i].i * pilot[i].i);
-        // fprintf(file, "%.6f\n", norm_squared);
-        fprintf(file, "Real: %d, Imaginary: %d, Norm^2: %.6f\n", pilot[i].r, pilot[i].i, norm_squared);
-    }
-
-    fclose(file);
-    file_count++; // 计数增加
+    // 日志输出文件生成信息
+    // LOG_E(PHY, "Generated files: %s and %s", filename_estimates, filename_phase);
 }
 
 
@@ -170,8 +184,8 @@ int nr_pusch_channel_estimation(PHY_VARS_gNB *gNB,
   if (pusch_pdu->transform_precoding == transformPrecoder_disabled) {
     nr_pusch_dmrs_rx(gNB, Ns, gNB->nr_gold_pusch_dmrs[pusch_pdu->scid][Ns][symbol], (int32_t *)pilot, (1000+p), 0, nb_rb_pusch,
                      (pusch_pdu->bwp_start + pusch_pdu->rb_start)*NR_NB_SC_PER_RB, pusch_pdu->dmrs_config_type);
-    // 导出pilot数组内容
-    export_pilot_values(pilot, 3280);
+    // // 导出pilot数组内容
+    // export_pilot_values(pilot, 3280);
   } else { // if transform precoding or SC-FDMA is enabled in Uplink
     // NR_SC_FDMA supports type1 DMRS so only 6 DMRS REs per RB possible
     const uint16_t index = get_index_for_dmrs_lowpapr_seq(nb_rb_pusch * (NR_NB_SC_PER_RB/2));
@@ -521,7 +535,7 @@ int nr_pusch_channel_estimation(PHY_VARS_gNB *gNB,
     *nvar = (uint32_t)(noise_amp2 / nest_count);
   }
   //提取相位信息并储存到文件中，用于后一步分析使用
-  extract_and_phase(ul_ch_estimates, gNB->frame_parms.nb_antennas_rx, symbolSize, nl);
+  extract_and_save_phase_offset(ul_ch_estimates, gNB->frame_parms.nb_antennas_rx, symbolSize);
   return 0;
 }
 

@@ -1,3 +1,4 @@
+# include(/home/devcontainers/OAI-for-UAV/openairinterface5g/cmake_targets/macros.cmake)
 set(M3AP_VERSION 14 0 0)
 make_version(M3AP_cc ${M3AP_VERSION})
 string(REPLACE ";" "." M3AP_RELEASE "${M3AP_VERSION}")
