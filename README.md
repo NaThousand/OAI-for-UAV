@@ -1,7 +1,13 @@
 物理层目编译命令：
 cd cmake_targets
 ./build_oai --phy_simulators
+
 相关命令文档：https://gitlab.eurecom.fr/oai/openairinterface5g/-/blob/develop/doc/BUILD.md
+
+本项目phase分支用于提取PUSCH信道状态信息
+
+train分支用于训练模型
+
 
 
 
