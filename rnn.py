@@ -9,9 +9,11 @@ from tensorflow.keras.models import Sequential # type: ignore
 from tensorflow.keras.layers import Dense, SimpleRNN # type: ignore
 import matplotlib.pyplot as plt
 
+print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
+print(tf.config.experimental.list_logical_devices('GPU'))
 # 定义数据目录
-label0_dir = '特征值_2/标签0'
-label1_dir = '特征值_2/标签1'
+label0_dir = '特征值_3/标签0'
+label1_dir = '特征值_3/标签1'
 
 data = []
 labels = []
@@ -76,7 +78,7 @@ model.add(Dense(1, activation='sigmoid'))  # 二分类问题
 model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
 # 训练模型，并存储训练过程中的数据
-history = model.fit(X_train, y_train, epochs=500, batch_size=32, validation_data=(X_test, y_test))
+history = model.fit(X_train, y_train, epochs=400, batch_size=32, validation_data=(X_test, y_test))
 
 # 绘制训练集和测试集准确率随epoch变化的曲线
 plt.figure(figsize=(10, 6))

@@ -1,14 +1,14 @@
 """
-将919中的数据整合到特征值_2文件夹中,
+将1014中的数据整合到特征值_2文件夹中,
 并将标签1和标签0分别存放在特征值_2/标签1和特征值_2/标签0文件夹中
 """
 
 import os
 import shutil
 
-data_dir = '919' 
-output_dir_label1 = '特征值_2/标签1'
-output_dir_label0 = '特征值_2/标签0'
+data_dir = '1014' 
+output_dir_label1 = '特征值_3/标签1'
+output_dir_label0 = '特征值_3/标签0'
 
 os.makedirs(output_dir_label1, exist_ok=True)
 os.makedirs(output_dir_label0, exist_ok=True)

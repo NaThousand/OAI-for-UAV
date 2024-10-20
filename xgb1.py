@@ -1,19 +1,22 @@
 """
-针对919里的数据进行训练, 并保存模型
-(919)里的数据经过处理后, 保存在特征值_2中
+最新版XGBoost代码
+进行了归一化处理
 """
+
+
 import os
 import pandas as pd
 import numpy as np
 import xgboost as xgb
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score, confusion_matrix
-import seaborn as sns
 import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
+import joblib
 
-label0_dir = '特征值_2/标签0'
-label1_dir = '特征值_2/标签1'
+# 定义数据目录
+label0_dir = '特征值_3/标签0'
+label1_dir = '特征值_3/标签1'
 
 data = []
 labels = []
@@ -47,12 +50,8 @@ for filename in os.listdir(label0_dir):
             features = parse_file_content(content)  
             if features: 
                 data.append(features)  
-                labels.append(0)  
-                #测试features是否正确
-                #print(f"Feature from file {filename}: {features[:10]}")  
-                #print(f"Feature length from file {filename}: {len(features)}")
+                labels.append(0)
 
-            
 df = pd.DataFrame(data)
 
 # 检查数据和标签长度是否匹配
@@ -67,18 +66,19 @@ y = df['Label']
 # 数据归一化处理
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X)
+joblib.dump(scaler, 'scaler.pkl')
 
-# 划分训练集和验证集
-X_train, X_val, y_train, y_val = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
+# 划分训练集和测试集
+X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
 
 # 转换为DMatrix格式
 dtrain = xgb.DMatrix(X_train, label=y_train)
-dval = xgb.DMatrix(X_val, label=y_val)
+dval = xgb.DMatrix(X_test, label=y_test)
 
 # XGBoost 参数配置
 params = {
     'booster': 'gbtree',
-    'eta': 0.05, #可调
+    'eta': 0.1,
     'gamma': 0.1,
     'max_depth': 4,
     'min_child_weight': 1,
@@ -86,51 +86,64 @@ params = {
     'colsample_bytree': 0.8,
     'lambda': 1,
     'alpha': 0.5,
-    'scale_pos_weight': 1,  #可选
+    'scale_pos_weight': 1,
     'objective': 'binary:logistic',
-    'eval_metric': 'error'  # 评估标准
+    'eval_metric': 'error'
 }
 
-# 用于存储评估结果
-evals_result = {}
+# 使用xgb.cv进行交叉验证
+cv_results = xgb.cv(
+    params,
+    dtrain,
+    num_boost_round=800,           # 最大训练轮次
+    nfold=5,                       # 5折交叉验证
+    early_stopping_rounds=60,      # 早停
+    metrics={'error'},             # 使用错误率作为评估指标
+    as_pandas=True,                # 结果保存为Pandas DataFrame
+    seed=42
+)
 
-# 训练模型，记录评估结果
-evals = [(dval, 'eval'), (dtrain, 'train')]
-bst = xgb.train(params, dtrain, num_boost_round=200, evals=evals, early_stopping_rounds=20, evals_result=evals_result)
+# 输出交叉验证的结果
+print(cv_results)
 
-# 绘制随训练轮次增加，训练集和验证集的准确率变化
-epochs = len(evals_result['train']['error'])
+# 获取最佳训练轮次
+best_num_boost_round = cv_results['test-error-mean'].idxmin()
+print(f'最佳训练轮次：{best_num_boost_round}')
+
+# 计算交叉验证的准确率
+cv_accuracy = 1 - cv_results['test-error-mean']  # 计算每次交叉验证的准确率
+mean_cv_accuracy = cv_accuracy.mean()  # 计算平均准确率
+print(f'交叉验证后的平均准确率: {mean_cv_accuracy:.4f}')
+
+
+# 使用最佳轮次重新训练整个模型
+bst = xgb.train(params, dtrain, num_boost_round=best_num_boost_round)
+
+# 在测试集上进行预测
+y_pred = bst.predict(dval)
+y_pred_binary = np.round(y_pred)  # 将预测值转为二分类标签
+
+# 计算准确率（基于测试集）
+accuracy = accuracy_score(y_test, y_pred_binary)  # 计算测试集的准确率
+print(f'测试集的准确率: {accuracy:.4f}')
+
+# 绘制训练和验证准确率随训练轮次变化的曲线
+epochs = len(cv_results)
 x_axis = range(0, epochs)
 
-# 转换错误率为准确率（1 - error）
-train_accuracy = [1 - error for error in evals_result['train']['error']]
-val_accuracy = [1 - error for error in evals_result['eval']['error']]
+# 提取训练和测试准确率
+train_accuracy = 1 - cv_results['train-error-mean']
+val_accuracy = 1 - cv_results['test-error-mean']
 
 plt.figure(figsize=(10, 6))
 plt.plot(x_axis, train_accuracy, label='Train Accuracy', marker='o')
 plt.plot(x_axis, val_accuracy, label='Validation Accuracy', marker='o')
-plt.xlabel('Epochs')
+plt.xlabel('Boosting Rounds')
 plt.ylabel('Accuracy')
-plt.title('XGBoost Accuracy Curve')
+plt.title('XGBoost Training and Validation Accuracy Curve')
 plt.legend()
 plt.grid(True)
 plt.show()
 
-# 模型预测和保存
-y_pred = bst.predict(dval)
-y_pred_binary = np.round(y_pred)
-
-accuracy = accuracy_score(y_val, y_pred_binary)
-print(f'验证集准确性：{accuracy:.4f}')
-
-# 绘制混淆矩阵
-# cm = confusion_matrix(y_val, y_pred_binary)
-# plt.figure(figsize=(8, 6))
-# sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")
-# plt.title('Confusion Matrix')
-# plt.ylabel('True Label')
-# plt.xlabel('Predicted Label')
-# plt.show()
-
 # 保存模型
-bst.save_model('xgb_model_pre.bin')
+bst.save_model('xgb_model_cv.bin')
